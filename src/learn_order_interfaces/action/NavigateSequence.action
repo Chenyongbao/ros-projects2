@@ -1,0 +1,19 @@
+# Goal：客户端提交一组按顺序执行的目标位姿。
+# Action Server 会逐个处理 goals，而不是一次把所有目标同时执行。
+geometry_msgs/PoseStamped[] goals
+---
+# Result：Action 完成、取消或失败后返回一次。
+# success 表示模拟导航是否完成全部目标。
+bool success
+# 已完成的目标数量，取消或失败时可能小于 goals.size()。
+uint32 completed_goals
+# 面向调用方的可读结果说明。
+string message
+---
+# Feedback：Action 执行期间可以多次发布。
+# current_goal_index 表示当前正在处理的目标下标。
+uint32 current_goal_index
+# 0.0 到 1.0 之间的总体进度比例。
+float32 progress
+# 当前执行阶段，例如 MOVING。
+string state

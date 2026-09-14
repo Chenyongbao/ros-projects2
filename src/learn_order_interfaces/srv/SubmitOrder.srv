@@ -1,0 +1,22 @@
+# 统一订单入口：所有外部订单先转换为这个 Service 请求。
+# 当前学习项目实现 transport 坐标运输订单和 inspection 单点巡检订单。
+string order_id
+# 订单类型，例如 transport / transport_order / inspection。
+string order_type
+# 数值越大，任务在队列中的优先级越高。
+int32 priority
+# 业务参数的 JSON 文本；transport 包含 pickup/dropoff 坐标，inspection 包含 x/y/yaw 坐标。
+string payload_json
+# 用于来源追踪的标签，当前核心逻辑暂不参与调度。
+string[] tags
+---
+# true 表示订单已经通过路由、预检并进入队列。
+bool accepted
+# rejected 时的分类：route、preflight、duplicate 或 queue。
+string reject_reason
+# 转换后的内部任务 ID。
+string mission_id
+# Service 返回时的当前队列长度。
+int32 queue_size
+# 面向调用者的可读描述。
+string message

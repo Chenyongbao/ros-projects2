@@ -1,0 +1,25 @@
+# 查询单个任务的最新状态与是否终态。
+#
+# 状态来源是网关节点内存中的事件历史：取该 mission_id 的
+# 最近一条事件作为“最新状态”。这样即使节点重启前任务早已结束，
+# 终态也依然可查；而终态后重新提交同一 ID 的订单，
+# 最新状态会正确回到 QUEUED 等过程状态。
+string mission_id
+---
+# 事件历史中是否存在该任务的任何记录；
+# 为 false 时其余字段均无有效语义（state 为空、is_terminal 为 false）。
+bool found
+# 该任务最近一条事件的 state，例如：
+#   QUEUED / DISPATCHED / RUNNING / RETRY_QUEUED / CANCEL_REQUESTED
+#   以及终态 SUCCEEDED / FAILED / CANCELED
+string state
+# 最新事件是否已处于终态（SUCCEEDED / FAILED / CANCELED）。
+# 调用方可据此判断任务生命周期是否已结束、是否允许重新提交。
+bool is_terminal
+# 最近一条事件记录的重试次数。
+uint32 retry_count
+# 终态发生时刻（来自终态事件的节点时钟时间戳）。
+# 注意：非终态任务此处恒为 0，不代表任务未开始。
+builtin_interfaces/Time timestamp
+# 最近一条事件的可读 message，便于调用方直接展示上下文。
+string message

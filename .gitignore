@@ -1,0 +1,17 @@
+# ROS2 colcon build artifacts
+build/
+install/
+log/
+build_verify/
+install_verify/
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+~$*

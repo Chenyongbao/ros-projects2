@@ -1,0 +1,23 @@
+# 按任务 ID 取消任务。
+#
+# 取消语义按任务所处位置分三类：
+#   1. 排队中  -> 同步确定：直接移出等待队列，立即记录 CANCELED 终态事件；
+#   2. 执行中  -> 异步请求：向 Action Server 发起 Goal 取消，
+#      最终 CANCELED 终态由 Action 的 result_callback 确认后记录；
+#   3. 不存在  -> 失败：按事件历史给出 not_found / already_terminal 原因。
+#
+# 兼容性说明：mission_id 留空时保留 v1 旧行为——
+# 直接取消当前活动 Goal（没有活动任务则返回失败），
+# 因此旧客户端不传 ID 也能继续工作。
+string mission_id
+---
+# true 表示取消已被受理：
+#   - 排队任务：已经真正取消并落终态；
+#   - 在跑任务：取消请求已发出，等待 Action 侧确认。
+bool success
+# 失败时的分类原因，便于调用方程序化判断：
+#   not_found / already_terminal / no_active_mission / not_in_queue
+# 成功时为 "none"。
+string reject_reason
+# 面向调用者的可读描述，可直接展示给人。
+string message

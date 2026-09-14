@@ -1,0 +1,10 @@
+# 查询指定任务的事件历史。
+# mission_id 为空时返回当前节点保存的全部事件。
+string mission_id
+---
+# 查询请求本身是否有效；没有匹配事件不属于接口错误。
+bool success
+# 面向命令行或上层调用者的说明。
+string message
+# 每个元素是一条可读的事件记录。
+string[] events
