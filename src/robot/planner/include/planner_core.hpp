@@ -10,6 +10,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
+#include "path_smoother.hpp"
 
 namespace robot
 {
@@ -151,6 +152,19 @@ class PlannerCore {
      * @brief A* 启发式函数（计算两栅格间的欧几里得距离）
      */
     double heuristic(const CellIndex& a, const CellIndex& b) const;
+
+    /**
+     * @brief 路径后处理：视线快捷化 → 固定弧长重采样 → 自然三次样条平滑（带碰撞回退）
+     * @param raw_path A* 输出的栅格路径（世界坐标，PoseStamped 序列）
+     * @return 平滑后的路径点序列（世界坐标）
+     */
+    std::vector<PathPoint2D> postProcessPath(
+      const std::vector<geometry_msgs::msg::PoseStamped>& raw_path) const;
+
+    /// 路径后处理三件套（重采样 / 快捷化 / 样条平滑）
+    PathResampler resampler_;
+    PathShortcutter shortcutter_;
+    SplinePathSmoother smoother_;
 };
 
 }  // namespace robot

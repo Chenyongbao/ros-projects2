@@ -160,6 +160,21 @@ nav_msgs::msg::Path PlannerCore::planPath() {
                 pose.pose.orientation.w = 1.0;
                 path.poses.push_back(pose);
             }
+
+            // 路径后处理：快捷化 + 重采样 + 样条平滑（平滑碰撞时自动回退）
+            std::vector<PathPoint2D> smoothed = postProcessPath(path.poses);
+            if (smoothed.size() != path.poses.size()) {
+                path.poses.clear();
+                path.poses.reserve(smoothed.size());
+                for (const auto& p : smoothed) {
+                    geometry_msgs::msg::PoseStamped pose;
+                    pose.header.frame_id = "sim_world";
+                    pose.pose.position.x = p.x;
+                    pose.pose.position.y = p.y;
+                    pose.pose.orientation.w = 1.0;
+                    path.poses.push_back(pose);
+                }
+            }
             return path;
         }
 
@@ -215,6 +230,55 @@ bool PlannerCore::goalReached() const {
 void PlannerCore::markGoalReached() {
     state_ = State::WAITING_FOR_GOAL;
     has_goal_ = false;
+}
+
+/**
+ * @brief 路径后处理三件套：视线快捷化 → 固定弧长重采样 → 自然三次样条平滑
+ * 平滑结果逐点做碰撞检测，一旦切进障碍物即回退原始路径（安全优先于平滑）
+ */
+std::vector<PathPoint2D> PlannerCore::postProcessPath(
+  const std::vector<geometry_msgs::msg::PoseStamped>& raw_path) const
+{
+  // 1. PoseStamped 序列 → 世界坐标点序列
+  PointPath2D points;
+  points.reserve(raw_path.size());
+  for (const auto& pose : raw_path) {
+    points.push_back({pose.pose.position.x, pose.pose.position.y});
+  }
+  if (points.size() < 3) return points;
+
+  // 2. 视线检测回调：两点连线按地图分辨率步进采样，任一落点栅格被占据则不可通行
+  const double resolution = map_.info.resolution;
+  auto hasLineOfSight = [this, resolution](const PathPoint2D& a, const PathPoint2D& b) {
+    double dx = b.x - a.x, dy = b.y - a.y;
+    double dist = std::sqrt(dx * dx + dy * dy);
+    int steps = std::max(1, static_cast<int>(std::ceil(dist / (resolution * 0.5))));
+    for (int i = 0; i <= steps; ++i) {
+      double t = static_cast<double>(i) / steps;
+      int cx, cy;
+      if (!worldToGrid(a.x + t * dx, a.y + t * dy, cx, cy) || isOccupied(cx, cy)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // 3. 自由空间检测回调：点所在栅格可通行
+  auto isFree = [this](const PathPoint2D& p) {
+    int cx, cy;
+    return worldToGrid(p.x, p.y, cx, cy) && !isOccupied(cx, cy);
+  };
+
+  // 4. 管线：快捷化裁掉锯齿拐角 → 均匀重采样稳定样条参数化 → 样条平滑
+  PointPath2D shortcut_path = shortcutter_.shortcut(points, hasLineOfSight);
+  PointPath2D resampled = resampler_.resampleAtFixedSpacing(shortcut_path, resolution);
+  SmoothingResult2D smoothed = smoother_.smooth(resampled, resolution, resolution, isFree);
+
+  if (smoothed.used_collision_fallback) {
+    logger_.warn("路径平滑后发生碰撞，回退为快捷化路径");
+    return resampled;
+  }
+  return smoothed.path;
 }
 
 }  // namespace robot

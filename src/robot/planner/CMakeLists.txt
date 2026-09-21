@@ -22,7 +22,8 @@ find_package(geometry_msgs REQUIRED)
 # We build a library so that the methods defined can be used by
 # both the unit test and ROS2 node executables.
 add_library(planner_lib
-  src/planner_core.cpp)
+  src/planner_core.cpp
+  src/path_smoother.cpp)
 # Indicate to compiler where to search for header files
 target_include_directories(planner_lib
   PUBLIC include)
