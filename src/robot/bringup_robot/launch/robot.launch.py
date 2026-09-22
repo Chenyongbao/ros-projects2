@@ -12,12 +12,19 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     """生成并返回 ROS 2 机器人完整运行环境启动描述"""
+    #类似：td::vector<Action> ld; // 创建一个空的任务列表容器
     ld = LaunchDescription()
 
     # ==================== 1. Costmap 局部代价地图节点 ====================
+    #generate_launch_description(): 构造函数
     costmap_pkg_prefix = get_package_share_directory('costmap')
+
+    #params.yaml:允许外部传入新的路径
     costmap_param_file = os.path.join(costmap_pkg_prefix, 'config', 'params.yaml')
     
+    #构造函数中的参数
+    #相当于带默认实参的函数形参
+    #void launchRobot(std::string costmap_param_file = "/default/path/to/params.yaml")
     costmap_param = DeclareLaunchArgument(
         'costmap_param_file',
         default_value=costmap_param_file,
@@ -27,9 +34,11 @@ def generate_launch_description():
         package='costmap',
         name='costmap_node',
         executable='costmap_node',
+        #LaunchConfiguration:相当于在构造函数内部引用这些参数变量
         parameters=[LaunchConfiguration('costmap_param_file')],
         output='screen'
     )
+    #把所有配置好的模块装配进系统容器中。
     ld.add_action(costmap_param)
     ld.add_action(costmap_node)
 
@@ -98,6 +107,16 @@ def generate_launch_description():
         output='screen'
     )
     ld.add_action(odometry_spoof_node)
+
+    # ==================== 6. Mission Manager 多点任务管理节点 ====================
+    # 任务队列状态机（IDLE/ACTIVE/RETRY）+ 重试跳过策略 + 任务状态发布
+    mission_manager_node = Node(
+        package='mission_manager',
+        name='mission_manager',
+        executable='mission_manager_node',
+        output='screen'
+    )
+    ld.add_action(mission_manager_node)
 
     return ld
 

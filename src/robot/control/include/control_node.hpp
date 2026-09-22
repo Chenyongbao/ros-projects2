@@ -5,6 +5,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 #include "control_core.hpp"
 
@@ -42,6 +43,7 @@ class ControlNode : public rclcpp::Node {
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub_;      ///< 路径订阅者 (/path)
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;  ///< 里程计订阅者 (/odom/filtered)
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr twist_pub_;  ///< 速度控制指令发布者 (/cmd_vel)
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr stuck_pub_;        ///< 卡死告警发布者 (/stuck_alert)
     rclcpp::TimerBase::SharedPtr timer_;                                 ///< 控制周期定时器 (100ms / 10Hz)
 };
 

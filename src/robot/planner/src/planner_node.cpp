@@ -31,6 +31,9 @@ PlannerNode::PlannerNode() : Node("planner"), planner_(robot::PlannerCore(this->
   // 创建路径发布者，将规划生成的路径发送给控制器模块
   path_pub_ = this->create_publisher<nav_msgs::msg::Path>("/path", 10);
 
+  // 到达反馈发布者：通知 mission_manager 推进任务队列
+  goal_reached_pub_ = this->create_publisher<std_msgs::msg::Bool>("/goal_reached", 10);
+
   // 创建定时器：每隔 500ms（频率 2Hz）检查是否已到达目标点
   timer_ = this->create_wall_timer(
     std::chrono::milliseconds(500),
@@ -80,6 +83,10 @@ void PlannerNode::timerCallback() {
   // 检查小车与目标的距离是否小于设定阈值
   if (planner_.goalReached()) {
     RCLCPP_INFO(this->get_logger(), "已成功到达导航目标点！(Goal reached!)");
+    // 发布到达反馈，mission_manager 收到后推进任务队列
+    std_msgs::msg::Bool reached;
+    reached.data = true;
+    goal_reached_pub_->publish(reached);
     planner_.markGoalReached(); // 将规划器状态切回 WAITING_FOR_GOAL
     return;
   }

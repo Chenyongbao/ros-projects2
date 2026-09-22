@@ -6,6 +6,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 #include "planner_core.hpp"
 
@@ -50,6 +51,7 @@ class PlannerNode : public rclcpp::Node {
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_point_sub_;   ///< 目标点订阅者 (/goal_point)
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;                  ///< 里程计订阅者 (/odom/filtered)
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;                         ///< 规划路径发布者 (/path)
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr goal_reached_pub_;                 ///< 到达反馈发布者 (/goal_reached)
     rclcpp::TimerBase::SharedPtr timer_;                                                 ///< 状态检测定时器 (500ms / 2Hz)
 };
 

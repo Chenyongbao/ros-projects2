@@ -25,6 +25,9 @@ ControlNode::ControlNode(): Node("control"), control_(robot::ControlCore(this->g
   // 创建速度指令发布者，将计算出的控制速度发布至底盘驱动话题 /cmd_vel
   twist_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
+  // 卡死告警发布者：通知 mission_manager 走重试流程
+  stuck_pub_ = this->create_publisher<std_msgs::msg::Bool>("/stuck_alert", 10);
+
   // 创建控制循环定时器：每隔 100ms（频率 10Hz）执行一次控制逻辑
   timer_  = this->create_wall_timer(
     std::chrono::milliseconds(100),
@@ -50,14 +53,38 @@ void ControlNode::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
 /**
  * @brief 定时控制主循环
- * 检查是否有路径，若存在则计算跟踪速度指令并向 /cmd_vel 发布；若无路径则不发布以允许遥控(teleop)接管
+ * 脱困摆动期间下发反转指令；正常时计算跟踪指令并做卡死检测
  */
 void ControlNode::controlLoop() {
   // 若无有效路径，直接退出，避免发布零速覆盖遥控操作
   if (!control_.hasPath()) return;
 
+  double now = this->get_clock()->now().seconds();
+
+  // 脱困摆动阶段：下发反转指令尝试脱困，结束后重置监控窗口
+  if (control_.inRecovery()) {
+    auto recovery_cmd = control_.computeRecoveryCommand(now);
+    twist_pub_->publish(recovery_cmd);
+    if (!control_.inRecovery()) {
+      control_.resetStuckMonitor();
+      RCLCPP_INFO(this->get_logger(), "脱困摆动结束，恢复路径跟踪");
+    }
+    return;
+  }
+
   // 调用控制算法核心计算速度控制指令
   auto cmd = control_.computeCommand();
+
+  // 卡死检测：时间窗 + 双阈值；触发则进入脱困摆动并发布告警
+  if (control_.updateStuckDetection(now, cmd)) {
+    RCLCPP_WARN(this->get_logger(), "进入脱困模式：原地倒退摆动 1.5s");
+    control_.enterRecovery(now, 1.5);
+    std_msgs::msg::Bool alert;
+    alert.data = true;
+    stuck_pub_->publish(alert);
+    return;
+  }
+
   // 发布线速度与角速度指令
   twist_pub_->publish(cmd);
 }

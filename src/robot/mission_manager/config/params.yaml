@@ -1,0 +1,4 @@
+# mission_manager 参数
+mission_manager:
+  ros__parameters:
+    max_retry: 3          # 单个任务点最大重试次数，超过则跳过该点

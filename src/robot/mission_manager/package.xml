@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>mission_manager</name>
+  <version>0.1.0</version>
+  <description>多点配送任务管理层：任务队列状态机、失败重试、卡死告警处理与任务状态发布</description>
+  <maintainer email="2302463677@qq.com">Chenyongbao</maintainer>
+  <license>MIT</license>
+
+  <depend>rclcpp</depend>
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -4,6 +4,7 @@
 #include "control_core.hpp"
 
 #include <cmath>
+#include <limits>
 
 namespace robot
 {
@@ -125,6 +126,119 @@ std::optional<geometry_msgs::msg::PoseStamped> ControlCore::findLookaheadPoint()
  */
 bool ControlCore::hasPath() const {
   return has_path_ && !path_.poses.empty();
+}
+
+/**
+ * @brief 计算机器人在路径上的投影弧长进度
+ * 找到路径上距当前位置最近的投影点，返回该点对应的累计弧长（米）
+ * 参考 taorobot 的 progress monitor 实现
+ */
+double ControlCore::computePathProgress() const {
+  if (path_.poses.size() < 2) return 0.0;
+
+  double accumulated = 0.0;
+  double best_progress = 0.0;
+  double best_dist = std::numeric_limits<double>::infinity();
+
+  for (std::size_t i = 0; i + 1 < path_.poses.size(); ++i) {
+    double x0 = path_.poses[i].pose.position.x;
+    double y0 = path_.poses[i].pose.position.y;
+    double x1 = path_.poses[i + 1].pose.position.x;
+    double y1 = path_.poses[i + 1].pose.position.y;
+    double dx = x1 - x0, dy = y1 - y0;
+    double seg_len2 = dx * dx + dy * dy;
+    double seg_len = std::sqrt(seg_len2);
+    if (seg_len < 1e-6) continue;
+
+    // 当前位置在本段上的投影比例（截断到 [0,1]）
+    double t = ((robot_x_ - x0) * dx + (robot_y_ - y0) * dy) / seg_len2;
+    t = std::max(0.0, std::min(1.0, t));
+    double proj_x = x0 + t * dx;
+    double proj_y = y0 + t * dy;
+    double dist = std::hypot(robot_x_ - proj_x, robot_y_ - proj_y);
+
+    // 记录最近投影点的累计弧长
+    if (dist < best_dist) {
+      best_dist = dist;
+      best_progress = accumulated + t * seg_len;
+    }
+    accumulated += seg_len;
+  }
+  return best_progress;
+}
+
+/**
+ * @brief 更新卡死检测监控器（时间窗 + 位移/目标距离改善双阈值）
+ * 判定条件：窗口期内一直在下发运动指令，但位移和到目标距离的改善都低于阈值
+ * @return true 本周期判定为卡死
+ */
+bool ControlCore::updateStuckDetection(double now, const geometry_msgs::msg::Twist& cmd) {
+  // 计算到当前路径终点的距离（作为目标距离改善的度量）
+  double goal_dist = std::numeric_limits<double>::infinity();
+  if (has_path_ && !path_.poses.empty()) {
+    const auto& last = path_.poses.back().pose.position;
+    goal_dist = std::hypot(last.x - robot_x_, last.y - robot_y_);
+  }
+
+  // 首次调用或刚重置：记录窗口起点
+  if (!monitor_.initialized) {
+    monitor_.initialized = true;
+    monitor_.window_start_x = robot_x_;
+    monitor_.window_start_y = robot_y_;
+    monitor_.window_start_time = now;
+    monitor_.window_start_goal_dist = goal_dist;
+    monitor_.is_stuck = false;
+    return false;
+  }
+
+  // 正在正常下发运动指令才检测（排除到达停车、等待路径等情况）
+  bool commanding = std::abs(cmd.linear.x) > 1e-3 || std::abs(cmd.angular.z) > 1e-3;
+  if (!commanding) {
+    monitor_.window_start_x = robot_x_;
+    monitor_.window_start_y = robot_y_;
+    monitor_.window_start_time = now;
+    monitor_.window_start_goal_dist = goal_dist;
+    monitor_.is_stuck = false;
+    return false;
+  }
+
+  // 窗口未到期，沿用上一次判定
+  if (now - monitor_.window_start_time < stuck_window_) {
+    return monitor_.is_stuck;
+  }
+
+  // 窗口到期：双阈值判定
+  double moved = std::hypot(robot_x_ - monitor_.window_start_x,
+                            robot_y_ - monitor_.window_start_y);
+  double improvement = monitor_.window_start_goal_dist - goal_dist;
+  monitor_.is_stuck = moved < min_progress_dist_ && improvement < min_goal_improvement_;
+
+  // 滑动窗口前移
+  monitor_.window_start_x = robot_x_;
+  monitor_.window_start_y = robot_y_;
+  monitor_.window_start_time = now;
+  monitor_.window_start_goal_dist = goal_dist;
+
+  if (monitor_.is_stuck) {
+    RCLCPP_WARN(logger_, "卡死检测触发：窗口内位移 %.3fm，目标距离改善 %.3fm", moved, improvement);
+  }
+  return monitor_.is_stuck;
+}
+
+/**
+ * @brief 计算脱困摆动指令：反转线速度与角速度，尝试倒退脱困
+ * 摆动阶段结束后恢复正常的 computeCommand 输出
+ */
+geometry_msgs::msg::Twist ControlCore::computeRecoveryCommand(double now) {
+  geometry_msgs::msg::Twist cmd;
+  if (now >= recovery_until_) {
+    recovery_until_ = 0.0;  // 摆动结束，恢复正常控制
+    return cmd;
+  }
+  // 反转巡航线速度 + 反向慢速旋转（倒退并偏转，尝试脱离障碍物卡滞）
+  cmd.linear.x = -0.5 * linear_speed_;
+  cmd.angular.z = 0.5 * max_steering_angle_;
+  return cmd;
 }
 
 }  // namespace robot
