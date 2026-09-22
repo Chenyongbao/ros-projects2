@@ -12,8 +12,8 @@
  * 初始化里程计发布者 (odom/filtered)、TF 变换监听缓存与 10Hz 定时查询器
  */
 OdometrySpoofNode::OdometrySpoofNode() : Node("odometry_spoof") {
-  // 创建里程计消息发布者
-  odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("odom/filtered", 10);
+  // 创建里程计消息发布者（真值源：供 sensor_simulator 注噪，不再直接作为定位输出）
+  odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("odom_raw", 10);
 
   // 创建 TF2 缓存与监听器实例
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());

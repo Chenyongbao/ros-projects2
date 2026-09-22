@@ -1,0 +1,9 @@
+# ekf_localizer 参数
+ekf_localizer:
+  ros__parameters:
+    alpha1: 0.10        # 线速度过程噪声随速度比例项（与 sensor_simulator 一致）
+    alpha2: 0.01        # 线速度过程噪声随角速度耦合项
+    alpha3: 0.01        # 角速度过程噪声随速度耦合项
+    alpha4: 0.10        # 角速度过程噪声随角速度比例项
+    sigma_imu: 0.05     # IMU 偏航观测噪声标准差 (rad/s)
+    publish_rate: 10.0  # 融合位姿发布频率 (Hz)

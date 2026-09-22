@@ -1,0 +1,8 @@
+# sensor_simulator 参数（Thrun 速度运动模型，Probabilistic Robotics Ch.5）
+sensor_simulator:
+  ros__parameters:
+    alpha1: 0.10        # 线速度噪声随速度比例项
+    alpha2: 0.01        # 线速度噪声随角速度耦合项
+    alpha3: 0.01        # 角速度噪声随速度耦合项
+    alpha4: 0.10        # 角速度噪声随角速度比例项
+    sigma_imu: 0.05     # IMU 角速度量测噪声标准差 (rad/s)

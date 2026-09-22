@@ -33,7 +33,10 @@ flowchart LR
 | `/scan` | `sensor_msgs/LaserScan` | 仿真 → Costmap |
 | `/local_costmap` | `nav_msgs/OccupancyGrid` | Costmap → Map Memory |
 | `/global_map` | `nav_msgs/OccupancyGrid` | Map Memory → Planner |
-| `/odom` | `nav_msgs/Odometry` | Odometry Spoof → Planner / Control / Map Memory |
+| `/odom_raw` | `nav_msgs/Odometry` | Odometry Spoof（真值源）→ Sensor Simulator |
+| `/wheel_odom` | `nav_msgs/Odometry` | Sensor Simulator（注噪）→ EKF Localizer |
+| `/imu/data` | `sensor_msgs/Imu` | Sensor Simulator（注噪）→ EKF Localizer |
+| `/odom/filtered` | `nav_msgs/Odometry` | EKF Localizer（融合）→ Planner / Control / Map Memory |
 | `/clicked_point` | `geometry_msgs/PointStamped` | Foxglove 用户点击 → Planner |
 | `/mission_goals` | `nav_msgs/Path` | 用户/Foxglove 多点任务 → Mission Manager |
 | `/goal_reached` | `std_msgs/Bool` | Planner → Mission Manager（到达反馈，推进队列） |

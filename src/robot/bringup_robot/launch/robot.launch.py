@@ -118,5 +118,45 @@ def generate_launch_description():
     )
     ld.add_action(mission_manager_node)
 
+    # ==================== 7. Sensor Simulator 传感器噪声仿真节点 ====================
+    # 按 Thrun 速度运动模型注噪：/odom_raw → /wheel_odom（漂移位姿）+ /imu/data（噪声角速度）
+    sensor_sim_pkg_prefix = get_package_share_directory('sensor_simulator')
+    sensor_sim_param_file = os.path.join(sensor_sim_pkg_prefix, 'config', 'params.yaml')
+
+    sensor_sim_param = DeclareLaunchArgument(
+        'sensor_sim_param_file',
+        default_value=sensor_sim_param_file,
+        description='传感器噪声仿真节点的配置文件路径'
+    )
+    sensor_sim_node = Node(
+        package='sensor_simulator',
+        name='sensor_simulator',
+        executable='sensor_simulator',
+        parameters=[LaunchConfiguration('sensor_sim_param_file')],
+        output='screen'
+    )
+    ld.add_action(sensor_sim_param)
+    ld.add_action(sensor_sim_node)
+
+    # ==================== 8. EKF Localizer 定位融合节点 ====================
+    # 融合带噪轮速里程计与 IMU，发布 /odom/filtered（下游接口零改动）
+    ekf_pkg_prefix = get_package_share_directory('ekf_localizer')
+    ekf_param_file = os.path.join(ekf_pkg_prefix, 'config', 'params.yaml')
+
+    ekf_param = DeclareLaunchArgument(
+        'ekf_param_file',
+        default_value=ekf_param_file,
+        description='EKF 定位融合节点的配置文件路径'
+    )
+    ekf_node = Node(
+        package='ekf_localizer',
+        name='ekf_localizer',
+        executable='ekf_node',
+        parameters=[LaunchConfiguration('ekf_param_file')],
+        output='screen'
+    )
+    ld.add_action(ekf_param)
+    ld.add_action(ekf_node)
+
     return ld
 

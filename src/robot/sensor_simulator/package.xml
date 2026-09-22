@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>sensor_simulator</name>
+  <version>0.1.0</version>
+  <description>传感器仿真：按 Thrun 速度运动模型给真值注入噪声，输出带漂移的轮速里程计与噪声 IMU 角速度</description>
+  <maintainer email="2302463677@qq.com">Chenyongbao</maintainer>
+  <license>MIT</license>
+
+  <depend>rclcpp</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
